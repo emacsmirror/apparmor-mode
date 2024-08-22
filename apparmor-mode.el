@@ -278,6 +278,26 @@
     (save-excursion
       (apparmor-mode--indent-line))))
 
+(defun apparmor-mode--find-first-previous-non-blank-line ()
+  "Find the first non-blank line before the current line."
+  (forward-line -1)
+  (beginning-of-line)
+  (while (and (not (bobp))
+              (looking-at "^\\s-*\\(#.*\\)?$"))
+    (forward-line -1)
+    (beginning-of-line)))
+
+(defun apparmor-mode--block-depth ()
+  "Count the number of blocks before the current line."
+  (save-excursion
+    (let ((depth 0))
+      ;; call backward-up-list and count each time until we hit an error
+      (condition-case nil
+          (while (progn (backward-up-list) t)
+            (setq depth (1+ depth)))
+        (error depth))
+      depth)))
+
 (defun apparmor-mode--indent-line ()
   "Indent current line in `apparmor-mode'."
   (beginning-of-line)
@@ -286,26 +306,40 @@
     ;; simple case indent to 0
     (indent-line-to 0))
    ((looking-at "^\\s-*}\\s-*$")
-    ;; block closing, deindent relative to previous line
-    (indent-line-to (save-excursion
-                      (forward-line -1)
-                      (max 0 (- (current-indentation) apparmor-mode-indent-offset)))))
-    ;; other cases need to look at previous lines
+    ;; if closing a block then indent relative to block depth minus one since
+    ;; this is closing the block
+    (indent-line-to (* (1- (apparmor-mode--block-depth)) apparmor-mode-indent-offset)))
+   ;; if opening a block then indent relative to block depth
+   ((looking-at "^.*{[^}]*\\s-*$")
+    (indent-line-to (* (apparmor-mode--block-depth) apparmor-mode-indent-offset)))
+   ;; other cases need to look at previous lines
    (t
     (indent-line-to (save-excursion
-                      (forward-line -1)
-                      ;; keep going backwards until we have a line with actual
-                      ;; content since blank lines don't count
-                      (while (and (looking-at "^\\s-*$")
-                                  (not (bobp)))
-                        (forward-line -1))
-                      (cond
-                       ((looking-at "\\(^.*{[^}]*$\\)")
-                        ;; previous line opened a block, indent to that line
-                        (+ (current-indentation) apparmor-mode-indent-offset))
-                       (t
-                        ;; default case, indent the same as previous line
-                        (current-indentation))))))))
+                      (let ((orig (point)))
+                        (apparmor-mode--find-first-previous-non-blank-line)
+                        (cond
+                         ((looking-at "\\(^.*{[^}]*$\\)")
+                          ;; previous line opened a block, indent to that line
+                          (+ (current-indentation) apparmor-mode-indent-offset))
+                         ((looking-at "\\(^.*,\\s-*$\\)")
+                          ;; previous line finishes a statement so indent - in
+                          ;; this case we want to indent by the block depth
+                          (* (apparmor-mode--block-depth) apparmor-mode-indent-offset))
+                         ((looking-at "\\(^.*[^,}]\\s-*$\\)")
+                          ;; previous line doesn't finish in a comma or end of
+                          ;; block - if it is the start of a statement (ie. the
+                          ;; previous-previous finishes in a comma) then indent
+                          ;; by more otherwise indent by the same
+                          (if (save-excursion
+                                (apparmor-mode--find-first-previous-non-blank-line)
+                                (looking-at "\\(^.*[,}]\\s-*$\\)"))
+                              (+ (current-indentation) (* 2 apparmor-mode-indent-offset))
+                            (current-indentation)))
+                         (t
+                          ;; default case, indent based on block depth of the
+                          ;; original position
+                          (goto-char orig)
+                          (* (apparmor-mode--block-depth) apparmor-mode-indent-offset)))))))))
 
 ;;;###autoload
 (define-derived-mode apparmor-mode prog-mode "AppArmor"
