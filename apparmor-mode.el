@@ -318,21 +318,26 @@
                       (let ((orig (point)))
                         (apparmor-mode--find-first-previous-non-blank-line)
                         (cond
+                         ((bobp)
+                          0)
                          ((looking-at "\\(^.*{[^}]*$\\)")
                           ;; previous line opened a block, indent to that line
                           (+ (current-indentation) apparmor-mode-indent-offset))
-                         ((looking-at "\\(^.*,\\s-*$\\)")
-                          ;; previous line finishes a statement so indent - in
-                          ;; this case we want to indent by the block depth
+                         ((looking-at "\\(^.*}\\s-*$\\)")
+                          ;; previous line closed a block, indent to that line
+                          (current-indentation))
+                         ((looking-at "\\(^.*[,>]\\s-*$\\)")
+                          ;; previous line finishes a statement - in this case
+                          ;; we want to indent by the block depth
                           (* (apparmor-mode--block-depth) apparmor-mode-indent-offset))
-                         ((looking-at "\\(^.*[^,}]\\s-*$\\)")
-                          ;; previous line doesn't finish in a comma or end of
-                          ;; block - if it is the start of a statement (ie. the
+                         ((looking-at "\\(^.*[^,>]\\s-*$\\)")
+                          ;; previous line doesn't finish in a comma or > - if it
+                          ;; is the start of a statement (ie. the
                           ;; previous-previous finishes in a comma) then indent
                           ;; by more otherwise indent by the same
                           (if (save-excursion
                                 (apparmor-mode--find-first-previous-non-blank-line)
-                                (looking-at "\\(^.*[,}]\\s-*$\\)"))
+                                (or (bobp) (looking-at "\\(^.*[,{}>]\\s-*$\\)")))
                               (+ (current-indentation) (* 2 apparmor-mode-indent-offset))
                             (current-indentation)))
                          (t
