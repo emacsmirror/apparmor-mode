@@ -238,9 +238,6 @@
     (modify-syntax-entry ?# "<" table)
     ;; newline finishes comment line
     (modify-syntax-entry ?\n ">" table)
-    ;; / and + is used in path names which we want to treat as an entire word
-    (modify-syntax-entry ?/ "w" table)
-    (modify-syntax-entry ?+ "w" table)
     table))
 
 (defun apparmor-mode-complete-include (prefix &optional local)
