@@ -1,0 +1,21 @@
+---
+stages:
+  - test
+
+image: ubuntu:latest
+
+before_script:
+  - export DEBIAN_FRONTEND=noninteractive
+  - apt-get update -qq
+  - apt install -y emacs-nox
+
+test:
+  stage: test
+
+  rules:
+    - changes:
+      - .gitlab.yml
+      - apparmor-mode.el
+      - tests/apparmor-mode-test.el
+  script:
+    - emacs -batch --dir . -l ./test/apparmor-mode-test.el --eval "(ert-run-tests-interactively t)"
