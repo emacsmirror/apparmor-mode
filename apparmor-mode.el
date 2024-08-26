@@ -2,8 +2,8 @@
 
 ;; Copyright (c) 2018 Canonical Ltd.
 
-;; Author: Alex Murray <murray.alex@gmail.com>
-;; Maintainer: Alex Murray <murray.alex@gmail.com>
+;; Author: Alex Murray <alex.murray@canonical.com>
+;; Maintainer: Alex Murray <alex.murray@canonical.com>
 ;; URL: https://github.com/alexmurray/apparmor-mode
 ;; Version: 0.8.2
 ;; Package-Requires: ((emacs "26.1"))
