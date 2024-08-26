@@ -2,7 +2,7 @@
 
 [![License GPL 3](https://img.shields.io/badge/license-GPL_3-green.svg)](http://www.gnu.org/licenses/gpl-3.0.txt)
 [![MELPA](http://melpa.org/packages/apparmor-mode-badge.svg)](http://melpa.org/#/apparmor-mode)
-[![Build Status](https://travis-ci.org/alexmurray/apparmor-mode.svg?branch=master)](https://travis-ci.org/alexmurray/arxml-mode)
+[![Build Status](https://gitlab.com/apparmor/apparmor-mode/badges/main/pipeline.svg)](https://gitlab.com/apparmor/apparmor-mode/-/pipelines)
 
 Provides an enhanced editing environment for AppArmor policy files within Emacs, including:
 
