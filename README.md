@@ -52,6 +52,6 @@ this:
 
 ## License
 
-Copyright © 2018 Alex Murray
+Copyright © 2018 Canonical Ltd.
 
 Distributed under GNU GPL, version 3.
