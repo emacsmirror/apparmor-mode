@@ -42,6 +42,7 @@
 ;; (require 'apparmor-mode)
 
 ;;; Code:
+(require 'cl-lib)
 
 ;; for flycheck integration
 (declare-function flycheck-define-command-checker "ext:flycheck.el"
