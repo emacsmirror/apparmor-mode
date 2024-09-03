@@ -202,7 +202,9 @@
       (1 font-lock-preprocessor-face t)
       (3 font-lock-string-face t))
      ;; variables
-     (,apparmor-mode-variable-name-regexp 0 font-lock-variable-name-face t)
+     (,apparmor-mode-variable-name-regexp 0 font-lock-variable-name-face)
+     (,apparmor-mode-variable-regexp 1 font-lock-variable-name-face t)
+     (,apparmor-mode-variable-regexp 2 font-lock-builtin-face t)
      ;; profiles
      (,apparmor-mode-profile-regexp
       (4 font-lock-function-name-face t nil)
