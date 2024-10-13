@@ -116,9 +116,9 @@
 
 (defvar apparmor-mode-include-regexp "^\\s-*\\(#?include\\( if exists\\)?\\)\\s-+\\([<\"][[:graph:]]+[\">]\\)")
 
-(defvar apparmor-mode-capability-regexp (concat  "^\\s-*\\(capability\\)\\s-+\\("
+(defvar apparmor-mode-capability-regexp (concat  "^\\s-*\\(capability\\)\\(\\(?:\\s-+"
                                                  (regexp-opt apparmor-mode-capabilities)
-                                                 "\\s-*\\)*"))
+                                                 "\\)+\\)"))
 
 (defvar apparmor-mode-variable-name-regexp "@{[[:alpha:]_]+}")
 
