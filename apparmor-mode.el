@@ -393,10 +393,10 @@
 
   (let ((source (current-buffer))
         (contents (buffer-substring (point-min) (point-max))))
-    ;; when the current buffer is an abstraction then fake a profile around it so
-    ;; we can check it
+    ;; when the current buffer is an abstraction or a local include/override
+    ;; then fake a profile around it so we can check it
     (when (and (buffer-file-name)
-               (string-match-p ".*/abstractions/.*" (buffer-file-name)))
+               (string-match-p ".*/\\(abstractions\\|local\\)/.*" (buffer-file-name)))
       (setq contents (format "profile %s { %s }" (buffer-name) contents)))
     (save-restriction
       (widen)
