@@ -241,6 +241,8 @@
     (modify-syntax-entry ?# "<" table)
     ;; newline finishes comment line
     (modify-syntax-entry ?\n ">" table)
+    ;; <> are paired delimiters for includes/abis
+    (modify-syntax-entry ?< "(>" table)
     table))
 
 (defun apparmor-mode-complete-include (prefix &optional local)
