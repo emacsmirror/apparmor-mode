@@ -364,20 +364,20 @@
   (when (require 'flycheck nil t)
     (unless (flycheck-valid-checker-p 'apparmor)
       (flycheck-define-command-checker 'apparmor
-        "A checker using apparmor_parser. "
-        :command '("apparmor_parser"
-                  "-Q" ;; skip kernel load
-                  "-K" ;; skip cache
-                  source)
-        :error-patterns '((error line-start "AppArmor parser error at line "
-                                 line ": " (message)
-                                line-end)
-                          (error line-start "AppArmor parser error for "
-                                 (one-or-more not-newline)
-                                 " in profile " (file-name)
-                                 " at line " line ": " (message)
-                                line-end))
-        :modes '(apparmor-mode)))
+                                       "A checker using apparmor_parser. "
+                                       :command '("apparmor_parser"
+                                                  "-Q" ;; skip kernel load
+                                                  "-K" ;; skip cache
+                                                  source)
+                                       :error-patterns '((error line-start "AppArmor parser error at line "
+                                                                line ": " (message)
+                                                                line-end)
+                                                         (error line-start "AppArmor parser error for "
+                                                                (one-or-more not-newline)
+                                                                " in profile " (file-name)
+                                                                " at line " line ": " (message)
+                                                                line-end))
+                                       :modes '(apparmor-mode)))
     (add-to-list 'flycheck-checkers 'apparmor t)))
 
 ;; flymake integration
