@@ -243,6 +243,7 @@
     (modify-syntax-entry ?\n ">" table)
     ;; <> are paired delimiters for includes/abis
     (modify-syntax-entry ?< "(>" table)
+    (modify-syntax-entry ?> ")<" table)
     ;; , is end of rule marker so treat as punctuation
     (modify-syntax-entry ?, "." table)
     table))
