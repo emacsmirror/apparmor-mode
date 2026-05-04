@@ -298,12 +298,16 @@
 (defun apparmor-mode--block-depth ()
   "Count the number of blocks before the current line."
   (save-excursion
-    (let ((depth 0))
-      ;; call backward-up-list and count each time until we hit an error
-      (condition-case nil
-          (while (progn (backward-up-list) t)
-            (setq depth (1+ depth)))
-        (error depth))
+    (let ((depth 0)
+          (target (line-beginning-position)))
+      (goto-char (point-min))
+      (while (< (point) target)
+        (cond
+          ((looking-at "^.*{[^}]*\\s-*$")
+           (setq depth (1+ depth)))
+          ((looking-at "^\\s-*}\\s-*$")
+           (setq depth (1- depth))))
+        (forward-line 1))
       depth)))
 
 (defun apparmor-mode--indent-line ()
