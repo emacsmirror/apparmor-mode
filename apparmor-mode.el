@@ -1,6 +1,6 @@
 ;;; apparmor-mode.el --- Major mode for editing AppArmor policy files         -*- lexical-binding: t; -*-
 
-;; Copyright (c) 2018 Canonical Ltd.
+;; Copyright (c) 2018 - 2024, 2026 Canonical Ltd.
 
 ;; Author: Alex Murray <murray.alex@gmail.com>
 ;; Maintainer: Alex Murray <murray.alex@gmail.com>
@@ -142,7 +142,10 @@
 
 (defvar apparmor-mode-profile-name-regexp "[[:alnum:]]+")
 
-(defvar apparmor-mode-profile-attachment-regexp "[][[:alnum:]*@/_{},-.?]+")
+(defvar apparmor-mode-profile-attachment-regexp "\\(?:[^\\0<>|&;? \t\n\"]+\\|\"[^\\0<>|&;?\t\n]+?\"\\)"
+  "File path in a rule. This regexp cover 2 cases:
+1. Path without any space: don't need to add double quotes.
+2. Path with space: need to be quoted with double quotes.")
 
 (defvar apparmor-mode-profile-flags-regexp
   (concat  "\\(flags\\)=(\\(" (regexp-opt apparmor-mode-profile-flags) "\\s-*\\)*)") )
@@ -216,13 +219,13 @@
      (,apparmor-mode-include-regexp
       (1 font-lock-preprocessor-face t)
       (3 font-lock-string-face t))
-     ;; variables
-     (,apparmor-mode-variable-name-regexp 0 font-lock-variable-name-face)
-     (,apparmor-mode-variable-regexp 1 font-lock-variable-name-face t)
-     (,apparmor-mode-variable-regexp 2 font-lock-builtin-face t)
+     ;; variables & globs interpolations (use function instead of regexp to avoid comments from wrongly highlighted)
+     (apparmor-mode--match-variable (0 font-lock-variable-name-face prepend))   ; @{HOME} in rule path
+     (apparmor-mode--match-brace-expansion (0 'font-lock-regexp-grouping-construct prepend))   ; {} in rule path
+     (apparmor-mode--match-glob (0 'font-lock-regexp-grouping-backslash prepend))    ; ** * ? in rule path
      ;; profiles
      (,apparmor-mode-profile-regexp
-      (4 font-lock-function-name-face t nil)
+      (4 font-lock-function-name-face t t) ; profile name is optional (unnamed/path-based profiles) so use laxmatch
       (5 font-lock-variable-name-face t))
      ;; capabilities
      (,apparmor-mode-capability-regexp 2 font-lock-type-face t)
@@ -249,6 +252,49 @@
       (10 font-lock-variable-name-face t t)
       (13 font-lock-variable-name-face t t)
       (16 font-lock-variable-name-face t t)))))
+
+(defun apparmor-mode--in-comment-p (pos)
+  "Return non-nil if POS is inside a comment, using text properties."
+  (save-excursion (nth 4 (syntax-ppss pos))))   ; t if inside a comment
+
+(defun apparmor-mode--match-variable (limit)
+  "Font-lock MATCHER for @{VAR}, skipping matches inside comments.
+Wraps `syntax-ppss' in `save-excursion' because it may move point
+internally, which would otherwise cause an infinite loop."
+  (let (found)
+    (while (and (not found)
+                (re-search-forward apparmor-mode-variable-name-regexp limit t))
+      (if (apparmor-mode--in-comment-p (match-beginning 0))
+          (goto-char (match-end 0))    ; skip comment, continue to try to match next
+        (setq found t)))
+    found))
+
+(defun apparmor-mode--match-brace-expansion (limit)
+  "Font-lock MATCHER for {a,b,**} brace expansion.
+Skips matches inside comments, after @ (which is @{VAR}), or
+adjacent to another { or } (Jinja2-style {{ }} stays untouched)."
+  (let (found)
+    (while (and (not found)
+                (re-search-forward "{[^{}\n]*}" limit t))
+      (let* ((beg (match-beginning 0))
+             (end (match-end 0))
+             (prev (and (> beg (point-min)) (char-before beg)))
+             (next (and (< end (point-max)) (char-after end))))
+        (if (or (eq prev ?@) (eq prev ?{) (eq next ?})
+                (apparmor-mode--in-comment-p beg))
+            (goto-char end)   ; skip comment, continue to try to match next
+          (setq found t))))
+    found))
+
+(defun apparmor-mode--match-glob (limit)
+  "Font-lock MATCHER for glob characters * ** ? outside comments."
+  (let (found)
+    (while (and (not found)
+                (re-search-forward "\\*\\*\\|[*?]" limit t))
+      (if (apparmor-mode--in-comment-p (match-beginning 0))
+          (goto-char (match-end 0))   ; skip comment, continue to try to match next
+        (setq found t)))
+    found))
 
 (defvar apparmor-mode-syntax-table
   (let ((table (make-syntax-table)))
