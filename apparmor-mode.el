@@ -220,20 +220,20 @@
       (3 font-lock-keyword-face nil t) ; class
       (5 font-lock-constant-face t) ; permissions
       (7 font-lock-function-name-face nil t)) ;profile
-     ;; network rules
+     ;; network rules - all sub-groups are optional so use laxmatch
      (,apparmor-mode-network-rule-regexp
-      (3 font-lock-constant-face t) ;permissions
-      (4 font-lock-function-name-face t) ;domain
-      (5 font-lock-variable-name-face t) ;type
-      (6 font-lock-type-face t)) ; protocol
-     ;; dbus rules
+      (3 font-lock-constant-face t t) ;permissions
+      (4 font-lock-function-name-face t t) ;domain
+      (5 font-lock-variable-name-face t t) ;type
+      (6 font-lock-type-face t t)) ; protocol
+     ;; dbus rules - all sub-groups are optional so use laxmatch
      (,apparmor-mode-dbus-rule-regexp
-      (4 font-lock-variable-name-face t) ;bus
-      (5 font-lock-constant-face t) ;system/session
-      (7 font-lock-variable-name-face t) ;dest
-      (10 font-lock-variable-name-face t)
-      (13 font-lock-variable-name-face t)
-      (16 font-lock-variable-name-face t)))))
+      (4 font-lock-variable-name-face t t) ;bus
+      (5 font-lock-constant-face t t) ;system/session
+      (7 font-lock-variable-name-face t t) ;dest
+      (10 font-lock-variable-name-face t t)
+      (13 font-lock-variable-name-face t t)
+      (16 font-lock-variable-name-face t t)))))
 
 (defvar apparmor-mode-syntax-table
   (let ((table (make-syntax-table)))
@@ -303,10 +303,10 @@
       (goto-char (point-min))
       (while (< (point) target)
         (cond
-          ((looking-at "^.*{[^}]*\\s-*$")
-           (setq depth (1+ depth)))
-          ((looking-at "^\\s-*}\\s-*$")
-           (setq depth (1- depth))))
+         ((looking-at "^.*{[^}]*\\s-*$")
+          (setq depth (1+ depth)))
+         ((looking-at "^\\s-*}\\s-*$")
+          (setq depth (1- depth))))
         (forward-line 1))
       depth)))
 
