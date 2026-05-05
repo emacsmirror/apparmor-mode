@@ -244,6 +244,8 @@
     ;; <> are paired delimiters for includes/abis
     (modify-syntax-entry ?< "(>" table)
     (modify-syntax-entry ?> ")<" table)
+    ;; @ is part of variable names
+    (modify-syntax-entry ?@ "_" table)
     ;; , is end of rule marker so treat as punctuation
     (modify-syntax-entry ?, "." table)
     table))
