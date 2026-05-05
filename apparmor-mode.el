@@ -59,6 +59,21 @@
   :type 'integer
   :group 'apparmor)
 
+(defcustom apparmor-mode-apparmor-parser-executable "apparmor_parser"
+  "Path to apparmor_parser executable. For checking syntax via flymake."
+  :type 'string
+  :group 'apparmor)
+
+(defun apparmor-mode-get-apparmor-parser-executable-path ()
+  "If found, return the full path of apparmor_parser executable. Else, nil."
+  ;; try to get full executable path even if it is only a file name
+  (or (executable-find apparmor-mode-apparmor-parser-executable)
+      (cl-find-if #'file-executable-p
+                  '("/usr/local/sbin/apparmor_parser"
+                    "/sbin/apparmor_parser"
+                    "/usr/sbin/apparmor_parser"))))
+
+
 (defvar apparmor-mode-keywords '("all" "audit" "capability" "chmod" "delegate"
                                  "dbus" "deny" "file" "flags" "io_uring" "include"
                                  "include if exists" "link" "mount" "mqueue"
@@ -373,20 +388,20 @@
   (when (require 'flycheck nil t)
     (unless (flycheck-valid-checker-p 'apparmor)
       (flycheck-define-command-checker 'apparmor
-                                       "A checker using apparmor_parser. "
-                                       :command '("apparmor_parser"
-                                                  "-Q" ;; skip kernel load
-                                                  "-K" ;; skip cache
-                                                  source)
-                                       :error-patterns '((error line-start "AppArmor parser error at line "
-                                                                line ": " (message)
-                                                                line-end)
-                                                         (error line-start "AppArmor parser error for "
-                                                                (one-or-more not-newline)
-                                                                " in profile " (file-name)
-                                                                " at line " line ": " (message)
-                                                                line-end))
-                                       :modes '(apparmor-mode)))
+        "A checker using apparmor_parser. "
+        :command `(,(apparmor-mode-get-apparmor-parser-executable-path)
+                   "-Q" ;; skip kernel load
+                   "-K" ;; skip cache
+                   source)
+        :error-patterns '((error line-start "AppArmor parser error at line "
+                                 line ": " (message)
+                                 line-end)
+                          (error line-start "AppArmor parser error for "
+                                 (one-or-more not-newline)
+                                 " in profile " (file-name)
+                                 " at line " line ": " (message)
+                                 line-end))
+        :modes '(apparmor-mode)))
     (add-to-list 'flycheck-checkers 'apparmor t)))
 
 ;; flymake integration
@@ -395,7 +410,7 @@
 (defun apparmor-mode-flymake (report-fn &rest _args)
   "`flymake' backend function for `apparmor-mode' to report errors via REPORT-FN."
   ;; disable if apparmor_parser is not available
-  (unless (executable-find "apparmor_parser")
+  (unless (apparmor-mode-get-apparmor-parser-executable-path)
     (error "Cannot find apparmor_parser"))
 
   ;; kill any existing running instance
@@ -421,7 +436,7 @@
         :buffer (generate-new-buffer " *apparmor-mode-flymake*")
         ;; TODO: specify the base directory so that includes resolve correctly
         ;; rather than using the system ones
-        :command '("apparmor_parser" "-Q" "-K" "/dev/stdin")
+        :command `(,(apparmor-mode-get-apparmor-parser-executable-path) "-Q" "-K" "/dev/stdin")
         :sentinel
         (lambda (proc _event)
           (when (memq (process-status proc) '(exit signal))
