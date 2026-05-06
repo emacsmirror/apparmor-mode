@@ -143,7 +143,9 @@
 (defvar apparmor-mode-profile-name-regexp "[[:alnum:]]+")
 
 (defvar apparmor-mode-profile-attachment-regexp
-  "\\(?:\"[^\"\n]*\"\\|[][[:alnum:]*@/_{},-.?]+\\)")
+  "\\(?:\"[^\"\n]*\"\\|[][[:alnum:]*@/_{},-.?]+\\)"
+  "Regexp matching valid AppArmor profile attachments.
+These can be either a quoted or unquoted path/profile name with glob characters.")
 
 (defvar apparmor-mode-profile-flags-regexp
   (concat  "\\(flags\\)=(\\(" (regexp-opt apparmor-mode-profile-flags) "\\s-*\\)*)") )
@@ -229,7 +231,11 @@
        ;; restrict the search to the path group
        (progn (goto-char (match-beginning 5)) (match-end 5))
        nil
-       (0 font-lock-builtin-face t t)))
+       (0 font-lock-builtin-face t t))
+      (apparmor-mode--glob-wildcard-matcher
+       (progn (goto-char (match-beginning 5)) (match-end 5))
+       nil
+       (0 'font-lock-regexp-grouping-construct t t)))
      ;; capabilities
      (,apparmor-mode-capability-regexp 2 font-lock-type-face t)
      ;; file rules
@@ -241,7 +247,11 @@
        ;; restrict the search to the path group
        (progn (goto-char (match-beginning 5)) (match-end 5))
        nil
-       (0 font-lock-builtin-face t t)))
+       (0 font-lock-builtin-face t t))
+      (apparmor-mode--glob-wildcard-matcher
+       (progn (goto-char (match-beginning 5)) (match-end 5))
+       nil
+       (0 'font-lock-regexp-grouping-construct t t)))
      (,apparmor-mode-file-rule-permissions-suffix-regexp
       (3 font-lock-keyword-face nil t) ; class
       (5 font-lock-constant-face t) ; permissions
@@ -250,7 +260,11 @@
        ;; restrict the search to the path group
        (progn (goto-char (match-beginning 4)) (match-end 4))
        nil
-       (0 font-lock-builtin-face t t)))
+       (0 font-lock-builtin-face t t))
+      (apparmor-mode--glob-wildcard-matcher
+       (progn (goto-char (match-beginning 4)) (match-end 4))
+       nil
+       (0 'font-lock-regexp-grouping-construct t t)))
      ;; network rules - all sub-groups are optional so use laxmatch
      (,apparmor-mode-network-rule-regexp
       (3 font-lock-constant-face t t) ;permissions
@@ -290,6 +304,13 @@ fontification, so comment faces are already present when this function is called
 
 (defvar apparmor-mode-glob-regexp "\\*\\*\\|[*{}?]"
   "Regexp matching AppArmor AARE glob characters.")
+
+(defvar apparmor-mode-glob-wildcard-regexp "\\*\\*\\|[*?]"
+  "Regexp matching AppArmor AARE wildcard glob characters (* ** ?).")
+
+(defun apparmor-mode--glob-wildcard-matcher (limit)
+  "Match AppArmor AARE wildcard glob characters (* ** ?) within LIMIT."
+  (re-search-forward apparmor-mode-glob-wildcard-regexp limit t))
 
 (defun apparmor-mode--glob-path-matcher (limit)
   "Match AppArmor AARE glob characters, skipping those in @{} variable references."

@@ -317,14 +317,15 @@ Quoted paths allow spaces in filenames, e.g. files under @{HOME}/My Documents/."
               'font-lock-constant-face)))
 
 (ert-deftest apparmor-mode-font-lock-glob-chars ()
-  "Test that AARE glob characters in paths receive font-lock-builtin-face.
+  "Test that AARE glob characters in paths are fontified correctly.
+* ** ? receive font-lock-regexp-grouping-construct; { } receive font-lock-builtin-face.
 Based on path patterns from /etc/apparmor.d/abstractions/base and /etc/apparmor.d/alsamixer."
   ;; * wildcard in suffix form file rule
   (should (eq (apparmor-mode-test--face-at "/usr/lib/*/file mr," "*")
-              'font-lock-builtin-face))
+              'font-lock-regexp-grouping-construct))
   ;; ** wildcard in suffix form file rule
   (should (eq (apparmor-mode-test--face-at "/usr/bin/** mr," "*")
-              'font-lock-builtin-face))
+              'font-lock-regexp-grouping-construct))
   ;; { and } in alternation in suffix form file rule
   (should (eq (apparmor-mode-test--face-at "/dev/{urandom,null} r," "{")
               'font-lock-builtin-face))
@@ -332,7 +333,7 @@ Based on path patterns from /etc/apparmor.d/abstractions/base and /etc/apparmor.
               'font-lock-builtin-face))
   ;; * wildcard in prefix form file rule
   (should (eq (apparmor-mode-test--face-at "file r /usr/lib/*.so," "*")
-              'font-lock-builtin-face))
+              'font-lock-regexp-grouping-construct))
   ;; { and } in alternation in profile attachment
   (should (eq (apparmor-mode-test--face-at "profile alsamixer /{usr,}/bin/alsamixer {" "{")
               'font-lock-builtin-face))
@@ -341,9 +342,9 @@ Based on path patterns from /etc/apparmor.d/abstractions/base and /etc/apparmor.
               'font-lock-variable-name-face))
   (should (eq (apparmor-mode-test--face-at "@{HOME}/*.so mr," "}")
               'font-lock-variable-name-face))
-  ;; * after a variable reference is still a glob
+  ;; * after a variable reference is still a glob wildcard
   (should (eq (apparmor-mode-test--face-at "@{HOME}/*.so mr," "*")
-              'font-lock-builtin-face))
+              'font-lock-regexp-grouping-construct))
   ;; ? wildcard matches a single character in a path
   (should (eq (apparmor-mode-test--face-at "/usr/lib/libfoo.so.? mr," "?")
-              'font-lock-builtin-face)))
+              'font-lock-regexp-grouping-construct)))
