@@ -243,7 +243,11 @@ Based on variables used throughout /etc/apparmor.d/."
   (should (eq (apparmor-mode-test--face-at "owner @{HOME}/.config r," "@{HOME}")
               'font-lock-variable-name-face))
   (should (eq (apparmor-mode-test--face-at "@{etc_ro}/ld.so.cache mr," "@{etc_ro}")
-              'font-lock-variable-name-face)))
+              'font-lock-variable-name-face))
+  ;; variable references inside comments must keep the comment face, not be
+  ;; overridden by the variable-name face
+  (should (eq (apparmor-mode-test--face-at "# allow @{HOME}" "@{HOME}")
+              'font-lock-comment-face)))
 
 (ert-deftest apparmor-mode-font-lock-capability-type ()
   "Test that capability types receive font-lock-type-face.
@@ -285,4 +289,61 @@ Based on rules from /etc/apparmor.d/abstractions/base and transition rules."
   (should (eq (apparmor-mode-test--face-at "file Cx /path -> child," "->")
               'font-lock-builtin-face))
   (should (eq (apparmor-mode-test--face-at "/path r," ",")
+              'font-lock-builtin-face)))
+
+(ert-deftest apparmor-mode-font-lock-quoted-path ()
+  "Test font-locking of file rules with quoted paths (for filenames with spaces).
+Quoted paths allow spaces in filenames, e.g. files under @{HOME}/My Documents/."
+  ;; suffix form: \"path\" perms,
+  (should (eq (apparmor-mode-test--face-at "\"@{HOME}/My Documents/file\" rw," "@{HOME}")
+              'font-lock-variable-name-face))
+  (should (eq (apparmor-mode-test--face-at "\"@{HOME}/My Documents/file\" rw," "rw")
+              'font-lock-constant-face))
+  ;; prefix form: file perms \"path\",
+  (should (eq (apparmor-mode-test--face-at "file rw \"@{HOME}/My Documents/file\"," "@{HOME}")
+              'font-lock-variable-name-face))
+  (should (eq (apparmor-mode-test--face-at "file rw \"@{HOME}/My Documents/file\"," "rw")
+              'font-lock-constant-face))
+  ;; mixed form: file \"path\" perms,
+  (should (eq (apparmor-mode-test--face-at "file \"@{HOME}/My Documents/file\" rw," "@{HOME}")
+              'font-lock-variable-name-face))
+  (should (eq (apparmor-mode-test--face-at "file \"@{HOME}/My Documents/file\" rw," "rw")
+              'font-lock-constant-face))
+  ;; quoted path without a variable reference
+  (should (eq (apparmor-mode-test--face-at "\"/path/with spaces\" r," "r")
+              'font-lock-constant-face))
+  ;; profile transition with a quoted source path
+  (should (eq (apparmor-mode-test--face-at "file Cx \"/path/with spaces\" -> child," "Cx")
+              'font-lock-constant-face)))
+
+(ert-deftest apparmor-mode-font-lock-glob-chars ()
+  "Test that AARE glob characters in paths receive font-lock-builtin-face.
+Based on path patterns from /etc/apparmor.d/abstractions/base and /etc/apparmor.d/alsamixer."
+  ;; * wildcard in suffix form file rule
+  (should (eq (apparmor-mode-test--face-at "/usr/lib/*/file mr," "*")
+              'font-lock-builtin-face))
+  ;; ** wildcard in suffix form file rule
+  (should (eq (apparmor-mode-test--face-at "/usr/bin/** mr," "*")
+              'font-lock-builtin-face))
+  ;; { and } in alternation in suffix form file rule
+  (should (eq (apparmor-mode-test--face-at "/dev/{urandom,null} r," "{")
+              'font-lock-builtin-face))
+  (should (eq (apparmor-mode-test--face-at "/dev/{urandom,null} r," "}")
+              'font-lock-builtin-face))
+  ;; * wildcard in prefix form file rule
+  (should (eq (apparmor-mode-test--face-at "file r /usr/lib/*.so," "*")
+              'font-lock-builtin-face))
+  ;; { and } in alternation in profile attachment
+  (should (eq (apparmor-mode-test--face-at "profile alsamixer /{usr,}/bin/alsamixer {" "{")
+              'font-lock-builtin-face))
+  ;; { and } of @{} variable references must NOT be glob builtins
+  (should (eq (apparmor-mode-test--face-at "@{HOME}/*.so mr," "{")
+              'font-lock-variable-name-face))
+  (should (eq (apparmor-mode-test--face-at "@{HOME}/*.so mr," "}")
+              'font-lock-variable-name-face))
+  ;; * after a variable reference is still a glob
+  (should (eq (apparmor-mode-test--face-at "@{HOME}/*.so mr," "*")
+              'font-lock-builtin-face))
+  ;; ? wildcard matches a single character in a path
+  (should (eq (apparmor-mode-test--face-at "/usr/lib/libfoo.so.? mr," "?")
               'font-lock-builtin-face)))

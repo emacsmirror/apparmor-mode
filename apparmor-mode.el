@@ -142,10 +142,8 @@
 
 (defvar apparmor-mode-profile-name-regexp "[[:alnum:]]+")
 
-(defvar apparmor-mode-profile-attachment-regexp "\\(?:[^\\0<>|&;? \t\n\"]+\\|\"[^\\0<>|&;?\t\n]+?\"\\)"
-  "File path in a rule. This regexp cover 2 cases:
-1. Path without any space: don't need to add double quotes.
-2. Path with space: need to be quoted with double quotes.")
+(defvar apparmor-mode-profile-attachment-regexp
+  "\\(?:\"[^\"\n]*\"\\|[][[:alnum:]*@/_{},-.?]+\\)")
 
 (defvar apparmor-mode-profile-flags-regexp
   (concat  "\\(flags\\)=(\\(" (regexp-opt apparmor-mode-profile-flags) "\\s-*\\)*)") )
@@ -219,25 +217,40 @@
      (,apparmor-mode-include-regexp
       (1 font-lock-preprocessor-face t)
       (3 font-lock-string-face t))
-     ;; variables & globs interpolations (use function instead of regexp to avoid comments from wrongly highlighted)
-     (apparmor-mode--match-variable (0 font-lock-variable-name-face prepend))   ; @{HOME} in rule path
-     (apparmor-mode--match-brace-expansion (0 'font-lock-regexp-grouping-construct prepend))   ; {} in rule path
-     (apparmor-mode--match-glob (0 'font-lock-regexp-grouping-backslash prepend))    ; ** * ? in rule path
+     ;; variables - custom matcher skips comments; override wins over string face in quoted paths
+     (apparmor-mode--variable-name-matcher 0 font-lock-variable-name-face t)
+     (,apparmor-mode-variable-regexp 1 font-lock-variable-name-face t)
+     (,apparmor-mode-variable-regexp 2 font-lock-builtin-face t)
      ;; profiles
      (,apparmor-mode-profile-regexp
-      (4 font-lock-function-name-face t t) ; profile name is optional (unnamed/path-based profiles) so use laxmatch
-      (5 font-lock-variable-name-face t))
+      (4 font-lock-function-name-face t nil)
+      (5 font-lock-variable-name-face t)
+      (apparmor-mode--glob-path-matcher
+       ;; restrict the search to the path group
+       (progn (goto-char (match-beginning 5)) (match-end 5))
+       nil
+       (0 font-lock-builtin-face t t)))
      ;; capabilities
      (,apparmor-mode-capability-regexp 2 font-lock-type-face t)
      ;; file rules
      (,apparmor-mode-file-rule-permissions-prefix-regexp
       (3 font-lock-keyword-face nil t) ; class
       (4 font-lock-constant-face t) ; permissions
-      (7 font-lock-function-name-face nil t)) ;profile
+      (7 font-lock-function-name-face nil t) ;profile
+      (apparmor-mode--glob-path-matcher
+       ;; restrict the search to the path group
+       (progn (goto-char (match-beginning 5)) (match-end 5))
+       nil
+       (0 font-lock-builtin-face t t)))
      (,apparmor-mode-file-rule-permissions-suffix-regexp
       (3 font-lock-keyword-face nil t) ; class
       (5 font-lock-constant-face t) ; permissions
-      (7 font-lock-function-name-face nil t)) ;profile
+      (7 font-lock-function-name-face nil t) ;profile
+      (apparmor-mode--glob-path-matcher
+       ;; restrict the search to the path group
+       (progn (goto-char (match-beginning 4)) (match-end 4))
+       nil
+       (0 font-lock-builtin-face t t)))
      ;; network rules - all sub-groups are optional so use laxmatch
      (,apparmor-mode-network-rule-regexp
       (3 font-lock-constant-face t t) ;permissions
@@ -254,46 +267,56 @@
       (16 font-lock-variable-name-face t t)))))
 
 (defun apparmor-mode--in-comment-p (pos)
-  "Return non-nil if POS is inside a comment, using text properties."
-  (save-excursion (nth 4 (syntax-ppss pos))))   ; t if inside a comment
+  "Return non-nil if POS has already been given a comment face by syntactic fontification.
+Checks the face text property rather than calling `syntax-ppss', because invoking
+`syntax-ppss' from inside a font-lock keyword matcher can recurse into Emacs's font-lock
+machinery and cause a hang.  Syntactic fontification is guaranteed to run before keyword
+fontification, so comment faces are already present when this function is called."
+  (let ((face (get-text-property pos 'face)))
+    (if (listp face)
+        (or (memq 'font-lock-comment-face face)
+            (memq 'font-lock-comment-delimiter-face face))
+      (or (eq face 'font-lock-comment-face)
+          (eq face 'font-lock-comment-delimiter-face)))))
 
-(defun apparmor-mode--match-variable (limit)
-  "Font-lock MATCHER for @{VAR}, skipping matches inside comments.
-Wraps `syntax-ppss' in `save-excursion' because it may move point
-internally, which would otherwise cause an infinite loop."
+(defun apparmor-mode--variable-name-matcher (limit)
+  "Match @{} variable references, skipping those inside comments."
   (let (found)
     (while (and (not found)
                 (re-search-forward apparmor-mode-variable-name-regexp limit t))
-      (if (apparmor-mode--in-comment-p (match-beginning 0))
-          (goto-char (match-end 0))    ; skip comment, continue to try to match next
+      (unless (apparmor-mode--in-comment-p (match-beginning 0))
         (setq found t)))
     found))
 
-(defun apparmor-mode--match-brace-expansion (limit)
-  "Font-lock MATCHER for {a,b,**} brace expansion.
-Skips matches inside comments, after @ (which is @{VAR}), or
-adjacent to another { or } (Jinja2-style {{ }} stays untouched)."
+(defvar apparmor-mode-glob-regexp "\\*\\*\\|[*{}?]"
+  "Regexp matching AppArmor AARE glob characters.")
+
+(defun apparmor-mode--glob-path-matcher (limit)
+  "Match AppArmor AARE glob characters, skipping those in @{} variable references."
   (let (found)
     (while (and (not found)
-                (re-search-forward "{[^{}\n]*}" limit t))
+                (re-search-forward apparmor-mode-glob-regexp limit t))
       (let* ((beg (match-beginning 0))
-             (end (match-end 0))
-             (prev (and (> beg (point-min)) (char-before beg)))
-             (next (and (< end (point-max)) (char-after end))))
-        (if (or (eq prev ?@) (eq prev ?{) (eq next ?})
-                (apparmor-mode--in-comment-p beg))
-            (goto-char end)   ; skip comment, continue to try to match next
+             (ch (char-after beg)))
+        (unless (or
+                 ;; { immediately preceded by @ is a variable reference opener
+                 (and (eq ch ?\{)
+                      (> beg (point-min))
+                      (eq (char-before beg) ?@))
+                 ;; } that closes a @{NAME} variable reference
+                 (and (eq ch ?\})
+                      (save-excursion
+                        (goto-char beg)
+                        (let ((depth 1))
+                          (while (and (> depth 0) (> (point) (point-min)))
+                            (backward-char)
+                            (cond
+                             ((eq (char-after) ?\}) (cl-incf depth))
+                             ((eq (char-after) ?\{) (cl-decf depth))))
+                          (and (= depth 0)
+                               (> (point) (point-min))
+                               (eq (char-before) ?@))))))
           (setq found t))))
-    found))
-
-(defun apparmor-mode--match-glob (limit)
-  "Font-lock MATCHER for glob characters * ** ? outside comments."
-  (let (found)
-    (while (and (not found)
-                (re-search-forward "\\*\\*\\|[*?]" limit t))
-      (if (apparmor-mode--in-comment-p (match-beginning 0))
-          (goto-char (match-end 0))   ; skip comment, continue to try to match next
-        (setq found t)))
     found))
 
 (defvar apparmor-mode-syntax-table
@@ -426,6 +449,7 @@ adjacent to another { or } (Jinja2-style {{ }} stays untouched)."
   "apparmor-mode is a major mode for editing AppArmor profiles."
   :syntax-table apparmor-mode-syntax-table
   (setq font-lock-defaults apparmor-mode-font-lock-defaults)
+  (setq-local font-lock-multiline t)
   (setq-local indent-line-function #'apparmor-mode-indent-line)
   (add-to-list 'completion-at-point-functions #'apparmor-mode-completion-at-point)
   (setq imenu-generic-expression `(("Profiles" ,apparmor-mode-profile-regexp 5)))
