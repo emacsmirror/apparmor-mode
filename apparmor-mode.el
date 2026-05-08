@@ -471,6 +471,9 @@ fontification, so comment faces are already present when this function is called
   :syntax-table apparmor-mode-syntax-table
   (setq font-lock-defaults apparmor-mode-font-lock-defaults)
   (setq-local font-lock-multiline t)
+  ;; ensure formatting via eglot (which uses tab-width) respects the configured
+  ;; indentation offset
+  (setq-local tab-width apparmor-mode-indent-offset)
   (setq-local indent-line-function #'apparmor-mode-indent-line)
   (add-to-list 'completion-at-point-functions #'apparmor-mode-completion-at-point)
   (setq imenu-generic-expression `(("Profiles" ,apparmor-mode-profile-regexp 5)))
