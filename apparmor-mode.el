@@ -483,8 +483,8 @@ fontification, so comment faces are already present when this function is called
   (setq font-lock-defaults apparmor-mode-font-lock-defaults)
   (setq-local font-lock-multiline t)
   (setq-local syntax-propertize-function apparmor-mode--syntax-propertize-function)
-  ;; ensure formatting via eglot (which uses tab-width) respects the configured
-  ;; indentation offset
+  ;; use spaces for indentation; eglot uses tab-width so keep it in sync
+  (setq-local indent-tabs-mode nil)
   (setq-local tab-width apparmor-mode-indent-offset)
   (setq-local indent-line-function #'apparmor-mode-indent-line)
   (add-to-list 'completion-at-point-functions #'apparmor-mode-completion-at-point)
