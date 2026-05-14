@@ -316,6 +316,26 @@ Quoted paths allow spaces in filenames, e.g. files under @{HOME}/My Documents/."
   (should (eq (apparmor-mode-test--face-at "file Cx \"/path/with spaces\" -> child," "Cx")
               'font-lock-constant-face)))
 
+(ert-deftest apparmor-mode-font-lock-embedded-hash-in-path ()
+  "Test that a # character embedded in a path is not treated as the start of a comment."
+  ;; suffix form: # in path is unfontified (not treated as comment start)
+  (should (eq (apparmor-mode-test--face-at "/usr/lib/libfoo.so.1# mr," "#")
+              nil))
+  (should (eq (apparmor-mode-test--face-at "/usr/lib/libfoo.so.1#2 mr," "#")
+              nil))
+  ;; character after # in path is also unfontified
+  (should (eq (apparmor-mode-test--face-at "/usr/lib/libfoo.so.1#2 mr," "2")
+              nil))
+  ;; permissions after path with embedded # are still correctly fontified
+  (should (eq (apparmor-mode-test--face-at "/usr/lib/libfoo.so.1#2 mr," "mr")
+              'font-lock-constant-face))
+  ;; prefix form: # in path is unfontified (not treated as comment start)
+  (should (eq (apparmor-mode-test--face-at "file mr /usr/lib/libfoo.so.1#2," "#")
+              nil))
+  ;; # immediately after a comma (end-of-rule marker) is a comment
+  (should (eq (apparmor-mode-test--face-at "/usr/lib/libfoo.so.1 mr,#comment" "#")
+              'font-lock-comment-delimiter-face)))
+
 (ert-deftest apparmor-mode-font-lock-glob-chars ()
   "Test that AARE glob characters in paths are fontified correctly.
 * ** ? receive font-lock-regexp-grouping-construct; { } receive font-lock-builtin-face.

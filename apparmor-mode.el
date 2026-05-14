@@ -143,9 +143,10 @@
 (defvar apparmor-mode-profile-name-regexp "[[:alnum:]]+")
 
 (defvar apparmor-mode-profile-attachment-regexp
-  "\\(?:\"[^\"\n]*\"\\|[][[:alnum:]*@/_{},-.?]+\\)"
+  "\\(?:\"[^\"\n]*\"\\|[][[:alnum:]*@/_{},-.?#]+\\)"
   "Regexp matching valid AppArmor profile attachments.
-These can be either a quoted or unquoted path/profile name with glob characters.")
+These can be either a quoted or unquoted path/profile name with glob characters.
+The # character is included to support paths with embedded # (e.g. overlayfs).")
 
 (defvar apparmor-mode-profile-flags-regexp
   (concat  "\\(flags\\)=(\\(" (regexp-opt apparmor-mode-profile-flags) "\\s-*\\)*)") )
@@ -340,6 +341,16 @@ fontification, so comment faces are already present when this function is called
           (setq found t))))
     found))
 
+(defvar apparmor-mode--syntax-propertize-function
+  (syntax-propertize-rules
+   ;; A # preceded by a non-whitespace, non-comma character is likely embedded
+   ;; in a file path (e.g. /lib/foo.so.1#2) and must not be treated as a comment
+   ;; start.  A comma is the end-of-rule marker, so # after a comma always
+   ;; starts a comment.
+   ("[^[:space:],]\\(#\\)"
+    (1 ".")))
+  "Syntax propertize function for `apparmor-mode'.")
+
 (defvar apparmor-mode-syntax-table
   (let ((table (make-syntax-table)))
     ;; # is comment start
@@ -471,6 +482,7 @@ fontification, so comment faces are already present when this function is called
   :syntax-table apparmor-mode-syntax-table
   (setq font-lock-defaults apparmor-mode-font-lock-defaults)
   (setq-local font-lock-multiline t)
+  (setq-local syntax-propertize-function apparmor-mode--syntax-propertize-function)
   ;; ensure formatting via eglot (which uses tab-width) respects the configured
   ;; indentation offset
   (setq-local tab-width apparmor-mode-indent-offset)
