@@ -246,6 +246,8 @@ Based on variables used throughout /etc/apparmor.d/."
               'font-lock-variable-name-face))
   (should (eq (apparmor-mode-test--face-at "@{arg1} r," "@{arg1}")
               'font-lock-variable-name-face))
+  (should (eq (apparmor-mode-test--face-at "@{a} r," "@{a}")
+              'font-lock-variable-name-face))
   ;; variable references inside comments must keep the comment face, not be
   ;; overridden by the variable-name face
   (should (eq (apparmor-mode-test--face-at "# allow @{HOME}" "@{HOME}")

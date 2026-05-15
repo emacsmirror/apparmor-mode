@@ -135,7 +135,7 @@
                                                  (regexp-opt apparmor-mode-capabilities)
                                                  "\\)+\\)"))
 
-(defvar apparmor-mode-variable-name-regexp "@{[[:alpha:]][[:alnum:]_]+}")
+(defvar apparmor-mode-variable-name-regexp "@{[[:alpha:]][[:alnum:]_]*}")
 
 (defvar apparmor-mode-variable-regexp
   (concat "^\\s-*\\(" apparmor-mode-variable-name-regexp "\\)\\s-*\\(\\+?=\\)\\s-*\\([[:graph:]]+\\)\\(\\s-+\\([[:graph:]]+\\)\\)?\\s-*\\(#.*\\)?$"))
